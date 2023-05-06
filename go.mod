@@ -1,4 +1,4 @@
-module github.com/konimarti/opc
+module github.com/diyliv/opc
 
 go 1.12
 
