@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/diyliv/opc"
+	"github.com/konimarti/opc"
 )
 
 func main() {

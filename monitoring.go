@@ -28,11 +28,11 @@ var (
 
 func init() {
 	// Metrics have to be registered to be exposed:
-	prometheus.MustRegister(opcReadsCounter)
-	prometheus.MustRegister(opcReadsDuration)
+	// prometheus.MustRegister(opcReadsCounter)
+	// prometheus.MustRegister(opcReadsDuration)
 }
 
-//StartMonitoring exposes /metrics to Prometheus
+// StartMonitoring exposes /metrics to Prometheus
 func StartMonitoring(port string) {
 	var p string
 	if port == "" {

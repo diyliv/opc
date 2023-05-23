@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/diyliv/opc"
-	"github.com/diyliv/opc/api"
+	"github.com/konimarti/opc"
+	"github.com/konimarti/opc/api"
 )
 
 var (

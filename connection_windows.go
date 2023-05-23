@@ -6,11 +6,13 @@ package opc
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
 	ole "github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -114,8 +116,13 @@ func buildTree(browser *ole.IDispatch, branch *Tree) {
 // It returns a reference to AutomationItems and error message.
 func (ao *AutomationObject) Connect(server string, node string) (*AutomationItems, error) {
 
-	// make sure there is not active connection before trying to connect
-	ao.disconnect()
+	// check if server is running, if yes then disconnect
+	if ao.IsConnected() {
+		_, err := oleutil.CallMethod(ao.object, "Disconnect")
+		if err != nil {
+			logger.Println("Failed to disconnect. Trying to connect anyway..")
+		}
+	}
 
 	// try to connect to opc server and check for error
 	logger.Printf("Connecting to %s on node %s\n", server, node)
@@ -196,20 +203,9 @@ func (ao *AutomationObject) GetOPCServers(node string) []string {
 	return servers_found
 }
 
-// Disconnect checks if connected to server and if so, it calls 'disconnect'
-func (ao *AutomationObject) disconnect() {
-	if ao.IsConnected() {
-		_, err := oleutil.CallMethod(ao.object, "Disconnect")
-		if err != nil {
-			logger.Println("Failed to disconnect.")
-		}
-	}
-}
-
 // Close releases the OLE objects in the AutomationObject.
 func (ao *AutomationObject) Close() {
 	if ao.object != nil {
-		ao.disconnect()
 		ao.object.Release()
 	}
 	if ao.unknown != nil {
@@ -219,12 +215,7 @@ func (ao *AutomationObject) Close() {
 
 // NewAutomationObject connects to the COM object based on available wrappers.
 func NewAutomationObject() *AutomationObject {
-	// TODO: list should not be hard-coded
-	wrappers := []string{
-		"OPC.Automation.1",
-		"Graybox.OPC.DAWrapper.1",
-		"Matrikon.OPC.Automation.1",
-	}
+	wrappers := []string{"OPC.Automation.1", "Graybox.OPC.DAWrapper.1"}
 	var err error
 	var unknown *ole.IUnknown
 	for _, wrapper := range wrappers {
@@ -325,9 +316,10 @@ func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (Item, error) {
 	opcReadsCounter.WithLabelValues("success").Inc()
 
 	return Item{
-		Value:     v.Value(),
-		Quality:   ensureInt16(q.Value()), // FIX: ensure the quality value is int16
-		Timestamp: ts.Value().(time.Time),
+		GUID:  uuid.NewString(),
+		Value: v.Value(),
+		// Quality:   ensureInt16(q.Value()), // FIX: ensure the quality value is int16
+		// Timestamp: ts.Value().(time.Time),
 	}, nil
 }
 
@@ -401,24 +393,42 @@ func (conn *opcConnectionImpl) Write(tag string, value interface{}) error {
 	return errors.New("No Write performed")
 }
 
+var valuePool = sync.Pool{
+	New: func() interface{} {
+		return ole.NewVariant(ole.VT_R4, 0)
+	},
+}
+
 // Read returns a map of the values of all added tags.
 func (conn *opcConnectionImpl) Read() map[string]Item {
-	/*
-		some changes in Read() method
-	*/
+	v := valuePool.Get().(ole.VARIANT)
+	defer valuePool.Put(v)
+
+	// q := ole.NewVariant(ole.VT_INT, 0)
+	ts := ole.NewVariant(ole.VT_DATE, 0)
 
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	allTags := make(map[string]Item)
 	for tag, opcitem := range conn.AutomationItems.items {
-		item, err := conn.AutomationItems.readFromOpc(opcitem)
+		_, err := oleutil.CallMethod(opcitem, "Read", OPCCache, &v, nil, &ts)
 		if err != nil {
 			logger.Printf("Cannot read %s: %s. Trying to fix.", tag, err)
 			conn.fix()
 			break
 		}
-		allTags[tag] = item
+
+		allTags[tag] = Item{
+			GUID:         uuid.New().String(),
+			PropertyName: tag,
+			Value:        v.Value(),
+			ValueType:    reflect.TypeOf(v.Value()).String(),
+			Version:      1,
+			CreatedAt:    time.Now().Local(),
+			UpdatedAt:    ts.Value().(time.Time).Local(),
+		}
 	}
+	v.Clear()
 	return allTags
 }
 

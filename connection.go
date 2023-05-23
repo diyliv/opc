@@ -38,7 +38,7 @@ const (
 	OPCTest int32 = 5
 )
 
-//Connection represents the interface for the connection to the OPC server.
+// Connection represents the interface for the connection to the OPC server.
 type Connection interface {
 	Add(...string) error
 	Remove(string)
@@ -49,17 +49,21 @@ type Connection interface {
 	Close()
 }
 
-//Item stores the result of an OPC item from the OPC server.
+// Item stores the result of an OPC item from the OPC server.
 type Item struct {
-	Value     interface{}
-	Quality   int16
-	Timestamp time.Time
+	GUID         string      `json:"GUID"`
+	PropertyName string      `json:"property_name"`
+	Value        interface{} `json:"value"`
+	ValueType    string      `json:"value_type"`
+	Version      int         `json:"version"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
 }
 
-//Good checks the quality of the Item
-func (i *Item) Good() bool {
-	if i.Quality == OPCQualityGood || i.Quality == OPCQualityGoodButForced {
-		return true
-	}
-	return false
-}
+// Good checks the quality of the Item
+// func (i *Item) Good() bool {
+// 	if i.Quality == OPCQualityGood || i.Quality == OPCQualityGoodButForced {
+// 		return true
+// 	}
+// 	return false
+// }

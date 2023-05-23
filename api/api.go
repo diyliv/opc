@@ -6,12 +6,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/diyliv/opc"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/konimarti/opc"
 )
 
-// test
 // App contains the opc connection and the API routes
 type App struct {
 	Conn   opc.Connection
@@ -19,8 +18,8 @@ type App struct {
 	Config Config
 }
 
-// Config determines what services shall be exposed
-// through the App
+//Config determines what services shall be exposed
+//through the App
 type Config struct {
 	WriteTag  bool `toml:"allow_write"`
 	AddTag    bool `toml:"allow_add"`
