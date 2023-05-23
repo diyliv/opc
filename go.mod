@@ -4,7 +4,9 @@ go 1.12
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/diyliv/opc v0.0.0-20230506124916-0eb700abd71f
 	github.com/go-ole/go-ole v1.2.4
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.4.1
 	github.com/gorilla/mux v1.7.2
 	github.com/influxdata/influxdb v1.7.6
