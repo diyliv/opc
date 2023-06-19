@@ -299,14 +299,14 @@ func ensureInt16(q interface{}) int16 {
 }
 
 // readFromOPC reads from the server and returns an Item and error.
-func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (Item, error) {
+func (ai *AutomationItems) readFromOpc(tag string, opcitem *ole.IDispatch) (Item, error) {
 	v := ole.NewVariant(ole.VT_R4, 0)
-	q := ole.NewVariant(ole.VT_INT, 0)
+	// q := ole.NewVariant(ole.VT_INT, 0)
 	ts := ole.NewVariant(ole.VT_DATE, 0)
 
 	//read tag from opc server and monitor duration in seconds
 	t := time.Now()
-	_, err := oleutil.CallMethod(opcitem, "Read", OPCCache, &v, &q, &ts)
+	_, err := oleutil.CallMethod(opcitem, "Read", OPCCache, &v, nil, &ts)
 	opcReadsDuration.Observe(time.Since(t).Seconds())
 
 	if err != nil {
@@ -316,10 +316,13 @@ func (ai *AutomationItems) readFromOpc(opcitem *ole.IDispatch) (Item, error) {
 	opcReadsCounter.WithLabelValues("success").Inc()
 
 	return Item{
-		GUID:  uuid.NewString(),
-		Value: v.Value(),
-		// Quality:   ensureInt16(q.Value()), // FIX: ensure the quality value is int16
-		// Timestamp: ts.Value().(time.Time),
+		GUID:         uuid.NewString(),
+		PropertyName: tag,
+		Value:        v.Value(),
+		ValueType:    reflect.TypeOf(v.Value()).String(),
+		Version:      1,
+		CreatedAt:    time.Now().Local(),
+		UpdatedAt:    ts.Value().(time.Time).Local(),
 	}, nil
 }
 
@@ -369,7 +372,7 @@ func (conn *opcConnectionImpl) ReadItem(tag string) Item {
 	defer conn.mu.Unlock()
 	opcitem, ok := conn.AutomationItems.items[tag]
 	if ok {
-		item, err := conn.AutomationItems.readFromOpc(opcitem)
+		item, err := conn.AutomationItems.readFromOpc(tag, opcitem)
 		if err == nil {
 			return item
 		}
